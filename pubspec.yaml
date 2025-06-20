@@ -1,0 +1,56 @@
+name: enmkit_fresh_start # Assurez-vous que c'est bien le nom de votre projet
+description: "A new Flutter project for EnMKIT control."
+publish_to: 'none' # Default
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0' # J'ai mis à jour vers une version de SDK Dart plus récente, ajustez si besoin
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Base de données locale
+  sqflite: ^2.3.2  # Version plus récente
+  path: ^1.9.0     # Version plus récente
+
+  # Gestion d'état
+  provider: ^6.1.2 # Votre version, peut être mise à jour (ex: ^6.1.1)
+
+  # Pour l'envoi et la réception de SMS
+  sms_advanced: ^1.1.0  # AJOUTÉ - Ou la dernière version stable de pub.dev
+                        # Vérifiez les problèmes de compatibilité si le build échoue spécifiquement ici.
+
+  # Pour la gestion des permissions (SMS, etc.)
+  permission_handler: ^11.3.1 # AJOUTÉ - Version plus récente
+
+  # Pour le formatage des dates et nombres (graphique, affichage)
+  intl: ^0.19.0 # AJOUTÉ - Version plus récente
+
+  # Pour les graphiques (Admin Dashboard)
+  fl_chart: ^0.64.0 # AJOUTÉ - Version plus récente
+
+  # Icônes (si vous utilisez cupertino_icons par défaut)
+  cupertino_icons: ^1.0.8 # Votre version, peut être mise à jour
+  flutter_launcher_icons: ^0.14.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Bonnes pratiques et règles de linting
+  flutter_lints: ^3.0.2 # Votre version, peut être mise à jour
+
+flutter:
+  uses-material-design: true
+
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic

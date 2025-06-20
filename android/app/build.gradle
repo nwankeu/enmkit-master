@@ -1,0 +1,40 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"  // Correction du nom du plugin Kotlin
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.example.enmkit"
+    compileSdk = 35
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17  // ✅ Passage à Java 17
+        targetCompatibility = JavaVersion.VERSION_17  // ✅ Passage à Java 17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"  // ✅ Mise à jour de la version Kotlin
+    }
+
+    defaultConfig {
+        applicationId = "com.example.enmkit"
+        minSdk = 23
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.debug
+        }
+    }
+}
+
+
+flutter {
+    source = "../.."
+}
