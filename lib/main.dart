@@ -4,15 +4,33 @@ import 'package:enmkit_fresh_start/services/database_helper.dart';
 import 'package:enmkit_fresh_start/views/login_screen.dart';
 import 'package:enmkit_fresh_start/views/admin_dashboard_screen.dart';
 import 'package:enmkit_fresh_start/views/user_dashboard_screen.dart';
+import 'package:enmkit_fresh_start/views/welcome_screen.dart'; // IMPORT POUR WELCOME SCREEN
+// Import pour RelayConsumptionHistoryScreen si vous définissez une route nommée, sinon pas nécessaire ici
+// import 'package:enmkit_fresh_start/views/relay_consumption_history_screen.dart'; 
 
+import 'package:provider/provider.dart'; 
+import 'package:enmkit_fresh_start/services/sms_service.dart'; 
+import 'package:shared_preferences/shared_preferences.dart'; // IMPORT POUR SHARED_PREFERENCES
 
-import 'package:provider/provider.dart'; // DÉCOMMENTEZ CET IMPORT
-import 'package:enmkit_fresh_start/services/sms_service.dart'; // DÉCOMMENTEZ CET IMPORT
+// Variable globale pour stocker l'état de l'écran de bienvenue
+// Elle sera initialisée dans main() avant runApp()
+bool _initialHasSeenWelcomeScreen = false;
 
-void main() async {
+Future<void> main() async { // main() doit être async pour await SharedPreferences
   WidgetsFlutterBinding.ensureInitialized();
   
   print("--- DÉBUT DE LA FONCTION main() ---");
+
+  // Vérifier si l'écran de bienvenue a déjà été vu
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    // Lire la valeur. Si elle n'existe pas (premier lancement), ?? false sera utilisé.
+    _initialHasSeenWelcomeScreen = prefs.getBool('hasSeenWelcomeScreen') ?? false;
+    print("Main: 'hasSeenWelcomeScreen' lu: $_initialHasSeenWelcomeScreen");
+  } catch (e) {
+    print("Erreur lors de la lecture de SharedPreferences dans main: $e");
+    _initialHasSeenWelcomeScreen = false; // Afficher WelcomeScreen par défaut en cas d'erreur
+  }
 
   print("Initialisation de DatabaseHelper...");
   final dbHelper = DatabaseHelper.instance;
@@ -24,24 +42,24 @@ void main() async {
   }
 
   print("Initialisation de SmsService...");
-  final smsService = SmsService(); // DÉCOMMENTEZ ET CRÉEZ L'INSTANCE
+  final smsService = SmsService(); 
 
-  print("Appel de runApp() avec MyApp originale et Provider...");
+  print("Appel de runApp() avec MyApp et Provider...");
   runApp(
-    ChangeNotifierProvider<SmsService>( // ENGLOBEZ MyApp AVEC LE PROVIDER
+    ChangeNotifierProvider<SmsService>( 
       create: (_) => smsService,
-      child: const MyApp(), 
+      child: const MyApp(), // MyApp n'a plus besoin de hasSeenWelcome en paramètre
     )
   );
 }
 
-// VOTRE CLASSE MyApp ORIGINALE RESTE LA MÊME
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  // const MyApp({super.key, required this.hasSeenWelcome}); // Ancien constructeur
+  const MyApp({super.key}); // Nouveau constructeur
 
   @override
   Widget build(BuildContext context) {
-    print("--- MyApp build() appelé ---");
+    print("--- MyApp build() appelé --- _initialHasSeenWelcomeScreen: $_initialHasSeenWelcomeScreen");
     return MaterialApp(
       title: 'EnMKIT Control',
       debugShowCheckedModeBanner: false, 
@@ -96,12 +114,15 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      initialRoute: '/login', 
+      // Définir la route initiale en fonction de la variable globale lue dans main()
+      initialRoute: _initialHasSeenWelcomeScreen ? '/login' : '/welcome', 
       routes: {
+        '/welcome': (context) => const WelcomeScreen(), // NOUVELLE ROUTE
         '/login': (context) => const LoginScreen(), 
         '/admin_dashboard': (context) => const AdminDashboardScreen(), 
         '/user_dashboard': (context) => const UserDashboardScreen(),
-        '/consumtion_history': (context) => const UserDashboardScreen(), // J'ai corrigé le nom de la route ici aussi  
+        // La route pour RelayConsumptionHistoryScreen n'est pas nécessaire ici
+        // si la navigation se fait par MaterialPageRoute.
       },
     );
   }

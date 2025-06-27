@@ -1,9 +1,9 @@
 // lib/services/database_helper.dart
 
 import 'package:enmkit_fresh_start/models/kit.dart';
-import 'package:enmkit_fresh_start/models/relay.dart'; // Assurez-vous qu'il contient currentRelayConsumption
+import 'package:enmkit_fresh_start/models/relay.dart'; 
 import 'package:enmkit_fresh_start/models/user.dart';
-import 'package:enmkit_fresh_start/models/relay_consumption_data_point.dart'; // NOUVEL IMPORT
+import 'package:enmkit_fresh_start/models/relay_consumption_data_point.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -38,6 +38,11 @@ class ConsumptionDataPoint {
       impulses: map['impulses'] as int,
     );
   }
+
+  @override
+  String toString() {
+    return 'ConsumptionDataPoint{id: $id, timestamp: $timestamp, consumption: $consumption, impulses: $impulses}';
+  }
 }
 
 
@@ -49,8 +54,8 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    // MISE À JOUR DU NOM DU FICHIER DB POUR LA VERSION 4 (ou gardez le même et laissez onUpgrade faire le travail)
-    _database = await _initDB('enmkit_app_v4.db'); 
+    // Nom de fichier pour la version 4 avec la logique d'utilisateur standard unique
+    _database = await _initDB('enmkit_app_v4_single_std_user.db'); 
     return _database!;
   }
 
@@ -60,7 +65,8 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // <<<< VERSION MISE À JOUR À 4
+      version: 4, // Garder v4 car le schéma des tables kit/relay/history est le même que la v4 précédente
+                   // La logique utilisateur est un changement de méthode, pas de schéma direct de la table users.
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -78,7 +84,7 @@ class DatabaseHelper {
     ''');
     print("Table 'users' créée.");
     await _insertDefaultAdmin(db);
-    await _insertTestUser(db); 
+    // L'utilisateur de test est retiré, l'utilisateur standard sera configuré par l'admin.
 
     // Table kits
     await db.execute('''
@@ -91,7 +97,7 @@ class DatabaseHelper {
     ''');
     print("Table 'kits' créée.");
 
-    // Table relays - MISE À JOUR AVEC currentRelayConsumption
+    // Table relays
     await db.execute('''
       CREATE TABLE relays (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,7 +106,7 @@ class DatabaseHelper {
         amperage REAL NOT NULL,
         state INTEGER NOT NULL DEFAULT 0,
         isDefaultRelay INTEGER NOT NULL DEFAULT 0,
-        currentRelayConsumption REAL NOT NULL DEFAULT 0.0, -- AJOUTÉ
+        currentRelayConsumption REAL NOT NULL DEFAULT 0.0,
         test TEXT
       )
     ''');
@@ -117,59 +123,44 @@ class DatabaseHelper {
     ''');
     print("Table 'consumption_history' (globale) créée.");
 
-    // NOUVELLE TABLE: relay_consumption_history
+    // Table relay_consumption_history
     await db.execute('''
       CREATE TABLE relay_consumption_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         relayIdentificateur TEXT NOT NULL, 
         timestamp TEXT NOT NULL,
         consumption REAL NOT NULL
-        -- Optionnel: FOREIGN KEY (relayIdentificateur) REFERENCES relays(identificateur)
       )
     ''');
     print("Table 'relay_consumption_history' créée.");
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    print("Mise à jour de la base de données de la v$oldVersion à la v$newVersion...");
+    print("Mise à jour DB de v$oldVersion à v$newVersion...");
     if (oldVersion < 2) { 
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS kits (id INTEGER PRIMARY KEY AUTOINCREMENT, kitNumber TEXT NOT NULL UNIQUE, currentConsumption REAL NOT NULL DEFAULT 0.0, currentImpulses INTEGER NOT NULL DEFAULT 0)
-      ''');
+      await db.execute('CREATE TABLE IF NOT EXISTS kits (id INTEGER PRIMARY KEY AUTOINCREMENT, kitNumber TEXT NOT NULL UNIQUE, currentConsumption REAL NOT NULL DEFAULT 0.0, currentImpulses INTEGER NOT NULL DEFAULT 0)');
       print("Table 'kits' assurée (onUpgrade <2).");
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS relays (id INTEGER PRIMARY KEY AUTOINCREMENT, identificateur TEXT NOT NULL UNIQUE, name TEXT NOT NULL, amperage REAL NOT NULL, state INTEGER NOT NULL DEFAULT 0, isDefaultRelay INTEGER NOT NULL DEFAULT 0, test TEXT)
-      '''); // Ancienne structure de relays
-      print("Table 'relays' (ancienne version) assurée (onUpgrade <2).");
+      await db.execute('CREATE TABLE IF NOT EXISTS relays (id INTEGER PRIMARY KEY AUTOINCREMENT, identificateur TEXT NOT NULL UNIQUE, name TEXT NOT NULL, amperage REAL NOT NULL, state INTEGER NOT NULL DEFAULT 0, isDefaultRelay INTEGER NOT NULL DEFAULT 0, test TEXT)');
+      print("Table 'relays' (v1 structure) assurée (onUpgrade <2).");
     }
     if (oldVersion < 3) { 
-       await db.execute('''
-        CREATE TABLE IF NOT EXISTS consumption_history (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, consumption REAL NOT NULL, impulses INTEGER NOT NULL)
-      ''');
+       await db.execute('CREATE TABLE IF NOT EXISTS consumption_history (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, consumption REAL NOT NULL, impulses INTEGER NOT NULL)');
       print("Table 'consumption_history' (globale) assurée (onUpgrade <3).");
     }
-    
     if (oldVersion < 4) {
-      // Migration vers v4: ajouter currentRelayConsumption à relays et créer relay_consumption_history
       try {
         var tableInfo = await db.rawQuery('PRAGMA table_info(relays)');
         bool columnExists = tableInfo.any((column) => column['name'] == 'currentRelayConsumption');
         if (!columnExists) {
             await db.execute("ALTER TABLE relays ADD COLUMN currentRelayConsumption REAL NOT NULL DEFAULT 0.0;");
-            print("Colonne 'currentRelayConsumption' ajoutée à la table 'relays'.");
-        } else {
-            print("Colonne 'currentRelayConsumption' existe déjà dans 'relays'.");
-        }
-      } catch (e) {
-        print("Erreur lors de l'ajout de la colonne currentRelayConsumption (peut-être déjà existante): $e");
-      }
+            print("Colonne 'currentRelayConsumption' ajoutée à 'relays'.");
+        } else { print("Colonne 'currentRelayConsumption' existe déjà dans 'relays'."); }
+      } catch (e) { print("Erreur ajout colonne currentRelayConsumption: $e"); }
       
       await db.execute('''
         CREATE TABLE IF NOT EXISTS relay_consumption_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          relayIdentificateur TEXT NOT NULL,
-          timestamp TEXT NOT NULL,
-          consumption REAL NOT NULL
+          id INTEGER PRIMARY KEY AUTOINCREMENT, relayIdentificateur TEXT NOT NULL,
+          timestamp TEXT NOT NULL, consumption REAL NOT NULL
         )
       ''');
       print("Table 'relay_consumption_history' assurée (onUpgrade <4).");
@@ -187,37 +178,47 @@ class DatabaseHelper {
     }
   }
 
-  Future<void> _insertTestUser(Database db) async {
-    final testUser = User(phoneNumber: '123123123', userId: 'user', isAdmin: false);
-    List<Map<String, dynamic>> existingTestUser = await db.query('users', where: 'phoneNumber = ? AND userId = ?', whereArgs: [testUser.phoneNumber, testUser.userId]);
-    if (existingTestUser.isEmpty) {
-        await db.insert('users', testUser.toMap());
-        print("Utilisateur de test '${testUser.phoneNumber}'/'${testUser.userId}' inséré.");
-    } else {
-        print("Utilisateur de test '${testUser.phoneNumber}'/'${testUser.userId}' existe déjà.");
-    }
-  }
-
   Future<User?> getUserByCredentials(String phoneNumber, String userId) async {
     final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query('users', where: 'phoneNumber = ? AND userId = ?', whereArgs: [phoneNumber, userId], limit: 1);
+    final List<Map<String, dynamic>> maps = await db.query(
+      'users',
+      where: 'phoneNumber = ? AND userId = ?',
+      whereArgs: [phoneNumber, userId],
+      limit: 1,
+    );
     if (maps.isNotEmpty) return User.fromMap(maps.first);
     return null;
   }
   
-  Future<int> addNewUserByAdmin(User user) async {
+  Future<int> setOrUpdateStandardUser(String newPhoneNumber, String newUserId) async {
     final db = await instance.database;
-    List<Map<String, dynamic>> existingUserByPhone = await db.query('users', where: 'phoneNumber = ?', whereArgs: [user.phoneNumber], limit: 1);
-    if (existingUserByPhone.isNotEmpty) {
-      throw Exception('Ce numéro de téléphone est déjà utilisé.');
+    final List<Map<String, dynamic>> adminCheck = await db.query('users', where: 'phoneNumber = ? AND isAdmin = ?', whereArgs: [newPhoneNumber, 1]);
+    if (adminCheck.isNotEmpty) {
+      throw Exception('Ce numéro de téléphone est déjà utilisé par l\'administrateur.');
     }
-    User userToInsert = User(phoneNumber: user.phoneNumber, userId: user.userId, isAdmin: false );
-    int id = await db.insert('users', userToInsert.toMap());
-    if (id <= 0) {
-      throw Exception("Échec de l'insertion du nouvel utilisateur en base de données.");
+    List<Map<String, dynamic>> standardUsers = await db.query('users', where: 'isAdmin = ?', whereArgs: [0]);
+    User userToProcess = User(phoneNumber: newPhoneNumber, userId: newUserId, isAdmin: false);
+
+    if (standardUsers.isEmpty) {
+      print("Insertion du nouvel utilisateur standard: $newPhoneNumber / $newUserId");
+      int id = await db.insert('users', userToProcess.toMap());
+      if (id <=0) throw Exception("Échec de l'insertion du nouvel utilisateur standard.");
+      return id;
+    } else {
+      int existingStandardUserId = User.fromMap(standardUsers.first).id!;
+      print("Mise à jour de l'utilisateur standard existant (ID: $existingStandardUserId) avec $newPhoneNumber / $newUserId");
+      Map<String, dynamic> updateData = userToProcess.toMapForUpdate(); // Utilise la méthode toMapForUpdate du modèle User
+      int count = await db.update('users', updateData, where: 'id = ? AND isAdmin = ?', whereArgs: [existingStandardUserId, 0]);
+      if (count == 0) throw Exception("Échec de la mise à jour de l'utilisateur standard.");
+      return existingStandardUserId; 
     }
-    print("Nouvel utilisateur ${user.phoneNumber} inséré par admin avec id: $id");
-    return id;
+  }
+
+  Future<User?> getStandardUser() async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query('users', where: 'isAdmin = ?', whereArgs: [0], limit: 1);
+    if (maps.isNotEmpty) return User.fromMap(maps.first);
+    return null;
   }
 
   Future<int> insertOrReplaceKit(Kit kit) async {
@@ -243,25 +244,31 @@ class DatabaseHelper {
     if (kit.id != null) {
         return await db.update('kits', kit.toMap(), where: 'id = ?', whereArgs: [kit.id]);
     } else {
-        print("Mise à jour du kit basée sur kitNumber car ID est null.");
+        // Si l'ID n'est pas connu (ne devrait pas arriver pour un kit existant chargé de la DB),
+        // on pourrait se baser sur kitNumber, mais c'est moins sûr si kitNumber peut changer.
+        // Privilégier la mise à jour par ID.
+        print("AVERTISSEMENT: Tentative de mise à jour du kit sans ID. Mise à jour basée sur kitNumber.");
         return await db.update('kits', kit.toMap(), where: 'kitNumber = ?', whereArgs: [kit.kitNumber]);
     }
   }
 
   Future<void> _insertDefaultRelaysForKit(Database db) async {
-    final List<Map<String, dynamic>> existingDefaultRelays = await db.query('relays', where: 'isDefaultRelay = ?', whereArgs: [1], limit: 4);
+    final List<Map<String, dynamic>> existingDefaultRelays = await db.query('relays', where: 'isDefaultRelay = ?', whereArgs: [1]);
     
-    if (existingDefaultRelays.length >= 4) {
-      print("Les 4 Relais par défaut déjà présents, pas de réinsertion.");
-      return; 
+    // S'assurer qu'on n'insère pas plus de 4 relais par défaut au total.
+    // Et pour chaque relais par défaut, vérifier s'il existe par son identificateur avant d'insérer.
+    if (existingDefaultRelays.length >= 4 && existingDefaultRelays.every((r) => Relay.fromMap(r).identificateur.startsWith("REL"))) {
+      print("Les 4 Relais par défaut semblent déjà présents, pas de réinsertion globale.");
+      // On pourrait quand même vérifier s'il manque un spécifique des 4 et l'ajouter.
+      // Pour l'instant, cette logique suffit si on part d'une DB propre.
     }
     
-    print("Insertion des relais par défaut (ou des manquants)...");
+    print("Vérification/Insertion des relais par défaut...");
     final defaultRelaysData = [
-      Relay(identificateur: "REL1", name: "Relais 1", amperage: 10.0, isDefaultRelay: true, test: "d1", currentRelayConsumption: 0.0),
-      Relay(identificateur: "REL2", name: "Relais 2", amperage: 10.0, isDefaultRelay: true, test: "d2", currentRelayConsumption: 0.0),
-      Relay(identificateur: "REL3", name: "Relais 3", amperage: 5.0, isDefaultRelay: true, test: "d3", currentRelayConsumption: 0.0),
-      Relay(identificateur: "REL4", name: "Relais 4", amperage: 5.0, isDefaultRelay: true, test: "d4", currentRelayConsumption: 0.0),
+      Relay(identificateur: "REL1", name: "Relais 1", amperage: 10.0, isDefaultRelay: true, currentRelayConsumption: 0.0, test: "d1"),
+      Relay(identificateur: "REL2", name: "Relais 2", amperage: 10.0, isDefaultRelay: true, currentRelayConsumption: 0.0, test: "d2"),
+      Relay(identificateur: "REL3", name: "Relais 3", amperage: 5.0, isDefaultRelay: true, currentRelayConsumption: 0.0, test: "d3"),
+      Relay(identificateur: "REL4", name: "Relais 4", amperage: 5.0, isDefaultRelay: true, currentRelayConsumption: 0.0, test: "d4"),
     ];
 
     for (var relay in defaultRelaysData) {
@@ -277,9 +284,9 @@ class DatabaseHelper {
 
   Future<int> insertRelay(Relay relay) async {
     final db = await instance.database;
-    // S'assurer que currentRelayConsumption a une valeur par défaut si non fournie
     Map<String, dynamic> relayMap = relay.toMap();
-    relayMap['currentRelayConsumption'] ??= 0.0;
+    relayMap['currentRelayConsumption'] ??= 0.0; // Assurer une valeur par défaut
+    relayMap['isDefaultRelay'] ??= 0; // Assurer une valeur par défaut pour les relais non-par-défaut
     return await db.insert('relays', relayMap);
   }
 
@@ -315,31 +322,20 @@ class DatabaseHelper {
     final db = await instance.database;
     String? whereClause;
     List<dynamic>? whereArgs;
-
     if (since != null) {
         whereClause = 'timestamp >= ?';
         whereArgs = [since.toIso8601String()];
     }
-
-    final List<Map<String, dynamic>> maps = await db.query(
-      'consumption_history',
-      orderBy: 'timestamp ASC', 
-      limit: limit,
-      where: whereClause,
-      whereArgs: whereArgs,
-    );
-    return List.generate(maps.length, (i) { 
-      return ConsumptionDataPoint.fromMap(maps[i]);
-    });
+    final List<Map<String, dynamic>> maps = await db.query('consumption_history', orderBy: 'timestamp ASC', limit: limit, where: whereClause, whereArgs: whereArgs);
+    return List.generate(maps.length, (i) { return ConsumptionDataPoint.fromMap(maps[i]); });
   }
 
    Future<void> clearConsumptionHistory() async {
     final db = await instance.database;
     await db.delete('consumption_history');
-    print("Historique de consommation vidé.");
+    print("Historique de consommation globale vidé.");
   }
 
-  // NOUVELLES MÉTHODES POUR L'HISTORIQUE DE CONSOMMATION PAR RELAIS
   Future<int> insertRelayConsumptionDataPoint(RelayConsumptionDataPoint dataPoint) async {
     final db = await instance.database;
     return await db.insert('relay_consumption_history', dataPoint.toMap());
@@ -349,22 +345,12 @@ class DatabaseHelper {
     final db = await instance.database;
     String whereClause = 'relayIdentificateur = ?';
     List<dynamic> whereArgs = [relayIdentifier];
-
     if (since != null) {
         whereClause += ' AND timestamp >= ?';
         whereArgs.add(since.toIso8601String());
     }
-
-    final List<Map<String, dynamic>> maps = await db.query(
-      'relay_consumption_history',
-      where: whereClause,
-      whereArgs: whereArgs,
-      orderBy: 'timestamp ASC', 
-      limit: limit,
-    );
-    return List.generate(maps.length, (i) { 
-      return RelayConsumptionDataPoint.fromMap(maps[i]);
-    });
+    final List<Map<String, dynamic>> maps = await db.query('relay_consumption_history', where: whereClause, whereArgs: whereArgs, orderBy: 'timestamp ASC', limit: limit);
+    return List.generate(maps.length, (i) { return RelayConsumptionDataPoint.fromMap(maps[i]); });
   }
 
    Future<void> clearRelayConsumptionHistory(String relayIdentifier) async {
@@ -372,6 +358,7 @@ class DatabaseHelper {
     await db.delete('relay_consumption_history', where: 'relayIdentificateur = ?', whereArgs: [relayIdentifier]);
     print("Historique de consommation vidé pour le relais $relayIdentifier.");
   }
+
    Future<void> clearAllRelayConsumptionHistories() async {
     final db = await instance.database;
     await db.delete('relay_consumption_history');

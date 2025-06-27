@@ -1,56 +1,63 @@
-name: enmkit_fresh_start # Assurez-vous que c'est bien le nom de votre projet
+name: enmkit_fresh_start
 description: "A new Flutter project for EnMKIT control."
-publish_to: 'none' # Default
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0 <4.0.0' # J'ai mis à jour vers une version de SDK Dart plus récente, ajustez si besoin
+  sdk: '>=3.2.0 <4.0.0' # Gardez une version de SDK compatible avec vos packages
 
 dependencies:
   flutter:
     sdk: flutter
 
   # Base de données locale
-  sqflite: ^2.3.2  # Version plus récente
-  path: ^1.9.0     # Version plus récente
+  sqflite: ^2.3.2 
+  path: ^1.9.0    
 
   # Gestion d'état
-  provider: ^6.1.2 # Votre version, peut être mise à jour (ex: ^6.1.1)
+  provider: ^6.1.2 # Peut être mis à jour vers ^6.1.1 ou la dernière
 
   # Pour l'envoi et la réception de SMS
-  sms_advanced: ^1.1.0  # AJOUTÉ - Ou la dernière version stable de pub.dev
-                        # Vérifiez les problèmes de compatibilité si le build échoue spécifiquement ici.
+  sms_advanced: ^1.1.0 # MIS À JOUR vers une version plus récente et stable
 
-  # Pour la gestion des permissions (SMS, etc.)
-  permission_handler: ^11.3.1 # AJOUTÉ - Version plus récente
+  # Pour la gestion des permissions
+  permission_handler: ^11.3.1 
 
-  # Pour le formatage des dates et nombres (graphique, affichage)
-  intl: ^0.19.0 # AJOUTÉ - Version plus récente
+  # Formatage des dates, nombres, etc.
+  intl: ^0.19.0 
 
-  # Pour les graphiques (Admin Dashboard)
-  fl_chart: ^0.64.0 # AJOUTÉ - Version plus récente
+  # Graphiques
+  fl_chart: ^0.64.0 # MIS À JOUR
 
-  # Icônes (si vous utilisez cupertino_icons par défaut)
-  cupertino_icons: ^1.0.8 # Votre version, peut être mise à jour
-  flutter_launcher_icons: ^0.14.4
+  # Sauvegarde de petites préférences
+  shared_preferences: ^2.2.3 # MIS À JOUR vers une version stable commune
+
+  cupertino_icons: ^1.0.8 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  
+  flutter_launcher_icons: ^0.14.4 # Version commune et stable
 
-  # Bonnes pratiques et règles de linting
-  flutter_lints: ^3.0.2 # Votre version, peut être mise à jour
+  flutter_lints: ^3.0.2 # Peut être mis à jour si souhaité
+
+# Configuration pour flutter_launcher_icons
+# Assurez-vous que l'image existe bien à ce chemin RELATIF à la racine du projet
+flutter_icons:
+  android: true
+  ios: true # Recommandé de générer pour les deux plateformes
+  image_path: "C:/Users/JOEL/Downloads/enmkit-master/assets/images/icon/logo.png"
+
+  # Si votre image est dans assets/images/icon/ic_launcher.png, utilisez ce chemin.
 
 flutter:
   uses-material-design: true
 
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
-
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
+  assets:
+    # Ajoutez ici les dossiers contenant vos assets (images, etc.)
+    # Exemple si vous avez des images pour les slides dans assets/images/
+    - assets/images/
+    # Assurez-vous que le dossier de votre icône d'application est listé ou son parent
+    #- assets/icon/ # Si votre icône est dans assets/icon/
+    # Ou si elle est dans assets/images/icon/ alors assets/images/ suffit si vous avez assets/images/ plus haut

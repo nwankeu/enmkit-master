@@ -1,39 +1,47 @@
 // lib/models/user.dart
 
 class User {
-  final int? id; // Nullable car auto-incrémenté par la base de données
+  final int? id; 
   final String phoneNumber;
-  final String userId; // Ce sera l'identifiant/mot de passe local
+  final String userId; 
   final bool isAdmin;
 
   User({
     this.id,
     required this.phoneNumber,
     required this.userId,
-    this.isAdmin = false, // Par défaut, un utilisateur n'est pas admin
+    this.isAdmin = false, 
   });
 
-  // Méthode pour convertir un User en Map (pour l'insertion/mise à jour en DB)
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'id': id, // Sera null pour une nouvelle insertion, la DB l'auto-incrémentera
       'phoneNumber': phoneNumber,
       'userId': userId,
-      'isAdmin': isAdmin ? 1 : 0, // Stocker booléen comme entier (0 ou 1) en SQLite
+      'isAdmin': isAdmin ? 1 : 0, 
     };
   }
 
-  // Méthode pour créer un User à partir d'une Map (lors de la lecture depuis la DB)
+  // Méthode pour la mise à jour, n'inclut pas l'ID car on ne met pas à jour la clé primaire.
+  // L'ID sera utilisé dans la clause WHERE de la requête UPDATE.
+  // Elle n'inclut pas non plus isAdmin car on ne change pas le statut d'admin d'un utilisateur standard ici.
+  Map<String, dynamic> toMapForUpdate() {
+    return {
+      'phoneNumber': phoneNumber,
+      'userId': userId,
+      // 'isAdmin': isAdmin ? 1 : 0, // On ne modifie pas le statut admin ici
+    };
+  }
+
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'] as int?,
       phoneNumber: map['phoneNumber'] as String,
       userId: map['userId'] as String,
-      isAdmin: (map['isAdmin'] as int) == 1, // Convertir entier en booléen
+      isAdmin: (map['isAdmin'] as int) == 1, 
     );
   }
 
-  // Optionnel: pour faciliter le débogage
   @override
   String toString() {
     return 'User{id: $id, phoneNumber: $phoneNumber, userId: $userId, isAdmin: $isAdmin}';
